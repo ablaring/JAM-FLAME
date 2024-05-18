@@ -35,6 +35,11 @@ level = 1
 power_up_active = None
 power_up_end_time = 0
 
+# Game states
+MENU = 0
+MANUAL = 1
+AI = 2
+game_state = MENU
 
 # Declare classes
 class Flame:
@@ -192,6 +197,30 @@ def reset_power_up():
 
 
 # Draw the scenario
+def draw_menu():
+    screen.fill((255, 255, 255))
+    title = font.render("FlameThrowerBug", True, (0, 0, 0))
+    manual_option = font.render("1. Play Manually", True, (0, 0, 0))
+    ai_option = font.render("2. Watch AI Play", True, (0, 0, 0))
+    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 4))
+    screen.blit(manual_option, (WIDTH // 2 - manual_option.get_width() // 2, HEIGHT // 2))
+    screen.blit(ai_option, (WIDTH // 2 - ai_option.get_width() // 2, HEIGHT // 2 + 40))
+    pygame.display.flip()
+
+
+def ai_logic():
+    global playerX, playerY, slopeX, slopeY, angle, shooting
+    slopeX = playerX - balloonObj.x
+    slopeY = playerY - balloonObj.y
+    angle = round(math.degrees(math.atan2(slopeX, slopeY)) + 90)
+    shooting = True
+    if slopeX != 0 and slopeY != 0:
+        vels = moving(slopeX, slopeY, SPEED)
+        if not borderCheck(playerX - vels[0], playerY - vels[1]):
+            playerX -= vels[0]
+            playerY -= vels[1]
+
+# Load assets
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("FlameThrowerBug")
 
@@ -236,17 +265,26 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_d:
+            if game_state == MENU:
+                if event.key == pygame.K_1:
+                    game_state = MANUAL
+                elif event.key == pygame.K_2:
+                    game_state = AI
+            elif event.key == pygame.K_d:
                 running = False
-        elif event.type == pygame.MOUSEMOTION:
+        elif event.type == pygame.MOUSEMOTION and game_state == MANUAL:
             mousePos = event.pos
             slopeX = playerX - mousePos[0]
             slopeY = playerY - mousePos[1]
             angle = round(math.degrees(math.atan2(slopeX, slopeY)) + 90)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
+        elif event.type == pygame.MOUSEBUTTONDOWN and game_state == MANUAL:
             shooting = True
-        elif event.type == pygame.MOUSEBUTTONUP:
+        elif event.type == pygame.MOUSEBUTTONUP and game_state == MANUAL:
             shooting = False
+
+    if game_state == MENU:
+        draw_menu()
+        continue
 
     # Shoot flames
     if shooting and slopeX != 0 and slopeY != 0:
@@ -254,12 +292,15 @@ while running:
             bullets.append(Flame(playerX, playerY, angle, slopeX, slopeY))
             last_shot_time = current_time
 
-    # Move player
-    if slopeX != 0 and slopeY != 0:
-        vels = moving(slopeX, slopeY, SPEED)
-        if not borderCheck(playerX - vels[0], playerY - vels[1]):
-            playerX -= vels[0]
-            playerY -= vels[1]
+    if game_state == MANUAL:
+        # Move player
+        if slopeX != 0 and slopeY != 0:
+            vels = moving(slopeX, slopeY, SPEED)
+            if not borderCheck(playerX - vels[0], playerY - vels[1]):
+                playerX -= vels[0]
+                playerY -= vels[1]
+    elif game_state == AI:
+        ai_logic()
 
     # Check power-up collision
     player_rect = pygame.Rect(playerX, playerY, BUGWIDTH, BUGHEIGHT)
