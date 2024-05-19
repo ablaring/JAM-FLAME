@@ -20,7 +20,7 @@ FLAMEHEIGHT = 60
 ENEMYWIDTH = 150
 ENEMYHEIGHT = 150
 LIVES = 3
-POWER_UP_DURATION = 50  # Power-up duration in milliseconds
+POWER_UP_DURATION = 5000  # Power-up duration in milliseconds
 
 playerX = 100
 playerY = 100
@@ -40,6 +40,9 @@ MENU = 0
 MANUAL = 1
 AI = 2
 game_state = MENU
+
+# Player health bar
+player_health = 100
 
 # Declare classes
 class Flame:
@@ -133,6 +136,23 @@ class Enemy:
             self.last_shot_time = current_time
 
 
+class MovingEnemy(Enemy):
+    def __init__(self, x, y, range_x, range_y):
+        super().__init__(x, y)
+        self.start_x = x
+        self.start_y = y
+        self.range_x = range_x
+        self.range_y = range_y
+        self.direction = 1
+
+    def update(self):
+        self.x += self.SPEED * self.direction
+        if self.x > self.start_x + self.range_x or self.x < self.start_x - self.range_x:
+            self.direction *= -1
+        screen.blit(enemy_image, (self.x, self.y))
+        self.shoot()
+
+
 def moving(slopeX, slopeY, speed):
     if abs(slopeX) > abs(slopeY):
         vx = math.copysign(speed, slopeX)
@@ -168,6 +188,11 @@ def update_lives():
 def update_level():
     level_text = font.render("Level: " + str(level), 1, pygame.Color("black"))
     return level_text
+
+
+def update_health():
+    health_text = font.render("Health: " + str(player_health), 1, pygame.Color("black"))
+    return health_text
 
 
 def spawn_power_up():
@@ -254,6 +279,7 @@ shooting_interval = 500  # Milliseconds between shots
 last_shot_time = pygame.time.get_ticks()
 
 enemies = [Enemy(random.randint(0, WIDTH - ENEMYWIDTH), random.randint(0, HEIGHT - ENEMYHEIGHT)) for _ in range(level)]
+moving_enemies = [MovingEnemy(random.randint(0, WIDTH - ENEMYWIDTH), random.randint(0, HEIGHT - ENEMYHEIGHT), 200, 0) for _ in range(level)]
 
 # Game loop
 running = True
@@ -311,9 +337,9 @@ while running:
     # Check for collisions with enemy bullets
     for bullet in enemy_bullets:
         if player_rect.colliderect(pygame.Rect(bullet.x, bullet.y, FLAMEWIDTH, FLAMEHEIGHT)):
-            LIVES -= 1
+            player_health -= 10
             enemy_bullets.remove(bullet)
-            if LIVES == 0:
+            if player_health <= 0:
                 running = False
 
     # Refresh sprites
@@ -324,12 +350,15 @@ while running:
     power_up.update()
     for enemy in enemies:
         enemy.update()
+    for moving_enemy in moving_enemies:
+        moving_enemy.update()
     rotated_bug = pygame.transform.rotate(bug, angle)
     screen.blit(rotated_bug, (playerX - rotated_bug.get_width() // 2, playerY - rotated_bug.get_height() // 2))
     screen.blit(update_fps(), (10, 0))
     screen.blit(update_score(), (10, 20))
     screen.blit(update_lives(), (10, 40))
     screen.blit(update_level(), (10, 60))
+    screen.blit(update_health(), (10, 80))
     pygame.display.flip()
     clock.tick(FRAMERATE)
 
@@ -342,5 +371,6 @@ while running:
         level += 1
         SPEED += 1  # Increase difficulty by increasing speed
         enemies.append(Enemy(random.randint(0, WIDTH - ENEMYWIDTH), random.randint(0, HEIGHT - ENEMYHEIGHT)))
+        moving_enemies.append(MovingEnemy(random.randint(0, WIDTH - ENEMYWIDTH), random.randint(0, HEIGHT - ENEMYHEIGHT), 200, 0))
 
 pygame.quit()
