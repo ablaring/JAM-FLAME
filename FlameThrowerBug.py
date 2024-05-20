@@ -54,7 +54,7 @@ class Flame:
         self.slopeX = slopeX
         self.slopeY = slopeY
         self.angle = angle
-        self.img = pygame.transform.rotate(flame, angle)
+        self.img = pygame.transform.rotate(flame, -angle)  # Rotate image correctly
         self.vels = moving(self.slopeX, self.slopeY, self.SPEED)
 
     def checkCollision(self):
@@ -72,11 +72,10 @@ class Flame:
     def update(self):
         if self.checkCollision() or borderCheck(self.x, self.y):
             return False
-        self.x -= self.vels[0]
-        self.y -= self.vels[1]
+        self.x += self.vels[0]
+        self.y += self.vels[1]
         screen.blit(self.img, (round(self.x), round(self.y)))
         return True
-
 
 class Balloon:
     def __init__(self, x, y):
@@ -128,13 +127,15 @@ class Enemy:
 
     def shoot(self):
         current_time = pygame.time.get_ticks()
-        if current_time - self.last_shot_time >= 1000:  # Shoot every second
+        if current_time - self.last_shot_time >= 2000:  # Shoot every second
             slopeX = playerX - self.x
             slopeY = playerY - self.y
-            angle = round(math.degrees(math.atan2(slopeX, slopeY)) + 90)
-            enemy_bullets.append(Flame(self.x, self.y, angle, slopeX, slopeY))
+            angle = math.degrees(math.atan2(slopeY, slopeX))  # Correct angle calculation
+            distance = math.sqrt(slopeX**2 + slopeY**2)
+            normalized_slopeX = slopeX / distance
+            normalized_slopeY = slopeY / distance
+            enemy_bullets.append(Flame(self.x, self.y, angle, normalized_slopeX, normalized_slopeY))
             self.last_shot_time = current_time
-
 
 class MovingEnemy(Enemy):
     def __init__(self, x, y, range_x, range_y):
@@ -235,15 +236,15 @@ def draw_menu():
 
 def ai_logic():
     global playerX, playerY, slopeX, slopeY, angle, shooting
-    slopeX = playerX - balloonObj.x
-    slopeY = playerY - balloonObj.y
-    angle = round(math.degrees(math.atan2(slopeX, slopeY)) + 90)
+    slopeX = balloonObj.x - playerX
+    slopeY = balloonObj.y - playerY
+    angle = math.degrees(math.atan2(slopeY, slopeX))
     shooting = True
     if slopeX != 0 and slopeY != 0:
         vels = moving(slopeX, slopeY, SPEED)
-        if not borderCheck(playerX - vels[0], playerY - vels[1]):
-            playerX -= vels[0]
-            playerY -= vels[1]
+        if not borderCheck(playerX + vels[0], playerY + vels[1]):
+            playerX += vels[0]
+            playerY += vels[1]
 
 # Load assets
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -300,9 +301,9 @@ while running:
                 running = False
         elif event.type == pygame.MOUSEMOTION and game_state == MANUAL:
             mousePos = event.pos
-            slopeX = playerX - mousePos[0]
-            slopeY = playerY - mousePos[1]
-            angle = round(math.degrees(math.atan2(slopeX, slopeY)) + 90)
+            slopeX = mousePos[0] - playerX
+            slopeY = mousePos[1] - playerY
+            angle = math.degrees(math.atan2(slopeY, slopeX))  # Correct angle calculation
         elif event.type == pygame.MOUSEBUTTONDOWN and game_state == MANUAL:
             shooting = True
         elif event.type == pygame.MOUSEBUTTONUP and game_state == MANUAL:
@@ -322,9 +323,9 @@ while running:
         # Move player
         if slopeX != 0 and slopeY != 0:
             vels = moving(slopeX, slopeY, SPEED)
-            if not borderCheck(playerX - vels[0], playerY - vels[1]):
-                playerX -= vels[0]
-                playerY -= vels[1]
+            if not borderCheck(playerX + vels[0], playerY + vels[1]):
+                playerX += vels[0]
+                playerY += vels[1]
     elif game_state == AI:
         ai_logic()
 
@@ -352,7 +353,7 @@ while running:
         enemy.update()
     for moving_enemy in moving_enemies:
         moving_enemy.update()
-    rotated_bug = pygame.transform.rotate(bug, angle)
+    rotated_bug = pygame.transform.rotate(bug, -angle)  # Correct player rotation
     screen.blit(rotated_bug, (playerX - rotated_bug.get_width() // 2, playerY - rotated_bug.get_height() // 2))
     screen.blit(update_fps(), (10, 0))
     screen.blit(update_score(), (10, 20))
